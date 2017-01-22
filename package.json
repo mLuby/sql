@@ -1,0 +1,28 @@
+{
+  "name": "sql",
+  "version": "1.0.0",
+  "description": "",
+  "main": "sql.js",
+  "scripts": {
+    "watch": "node_modules/.bin/npm-watch",
+    "test": "node tests.js # | node_modules/.bin/tap-diff"
+  },
+  "watch": {
+    "test": {
+      "patterns": [
+        "sql.js",
+        "tests.js"
+      ],
+      "extensions": "js",
+      "ignore": ""
+    }
+  },
+  "keywords": [],
+  "author": "Mike Luby <Michael@mLuby.com> (https://github.com/mLuby)",
+  "license": "ISC",
+  "devDependencies": {
+    "npm-watch": "^0.1.7",
+    "tap-diff": "^0.1.1",
+    "tape": "^4.6.3"
+  }
+}
