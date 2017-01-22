@@ -14,30 +14,107 @@ test(sql({selectors: [
 ]}), "SELECT `tweets.lang`, `contributions.state` FROM `tweets`, `contributions`;")
 
 console.log("WHERE")
-test(sql({selectors: [
-  {expression: "lang", table: "tweets"},
-], filters: [
-  {expression: "lang", operand: [1, 3], operator: "between", table: "tweets"}
-]}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.lang` BETWEEN 1 AND 3);")
-
-test(sql({selectors: [
-  {expression: "lang", table: "tweets"},
-], filters: [
-  {expression: "lang", operand: ["EN", "FR", "ES"], operator: "in", table: "tweets"}
-]}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.lang` IN ('EN', 'FR', 'ES'));")
-
-test(sql({selectors: [
-  {expression: "lang", table: "tweets"},
-], filters: [
-  {expression: "lang", operand: [1, 3], operator: "between", table: "tweets"},
-  {expression: "lang", operand: ["EN", "FR", "ES"], operator: "in", table: "tweets"}
-]}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.lang` BETWEEN 1 AND 3) AND (`tweets.lang` IN ('EN', 'FR', 'ES'));")
-
-test(sql({selectors: [
-  {expression: "lang", table: "tweets"},
-], filters: [
-  {expression: "lang", operand: ["EN", "FR", "ES"], operator: "in", table: "tweets"}
-]}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.lang` IN ('EN', 'FR', 'ES'));")
+// BETWEEN
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {expression: "lang", operand: [1, 3], operator: "between", table: "tweets"}
+}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.lang` BETWEEN 1 AND 3);")
+// NOT BETWEEN
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {expression: "lang", operand: [1, 3], operator: "not between", table: "tweets"}
+}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.lang` NOT BETWEEN 1 AND 3);")
+// IN
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {expression: "lang", operand: ["EN", "FR", "ES"], operator: "in", table: "tweets"}
+}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.lang` IN ('EN', 'FR', 'ES'));")
+// NOT IN
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {expression: "lang", operand: ["EN", "FR", "ES"], operator: "not in", table: "tweets"}
+}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.lang` NOT IN ('EN', 'FR', 'ES'));")
+// LIKE
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {expression: "country", operand: "nited", operator: "like", table: "tweets"}
+}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.country` LIKE '%nited%');")
+// NOT LIKE
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {expression: "country", operand: "nited", operator: "not like", table: "tweets"}
+}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.country` NOT LIKE '%nited%');")
+// ILIKE
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {expression: "country", operand: "nited", operator: "ilike", table: "tweets"}
+}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.country` ILIKE '%nited%');")
+// NOT ILIKE
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {expression: "country", operand: "nited", operator: "not ilike", table: "tweets"}
+}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.country` NOT ILIKE '%nited%');")
+// IS NULL
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {operator: "is null", expression: "lang", table: "tweets"}
+}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.lang` IS NULL);")
+// IS NOT NULL
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {operator: "is not null", expression: "lang", table: "tweets"}
+}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.lang` IS NOT NULL);")
+// =
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {expression: "lang", operand: 1, operator: "=", table: "tweets"}
+}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.lang` = 1);")
+// !=
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {expression: "lang", operand: 1, operator: "!=", table: "tweets"}
+}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.lang` != 1);")
+// >
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {expression: "lang", operand: 1, operator: ">", table: "tweets"}
+}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.lang` > 1);")
+// >=
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {expression: "lang", operand: 1, operator: ">=", table: "tweets"}
+}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.lang` >= 1);")
+// <
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {expression: "lang", operand: 1, operator: "<", table: "tweets"}
+}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.lang` < 1);")
+// <=
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {expression: "lang", operand: 1, operator: "<=", table: "tweets"}
+}), "SELECT `tweets.lang` FROM `tweets` WHERE (`tweets.lang` <= 1);")
+// AND
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {
+    operand: [
+      {expression: "lang", operator: "=", operand: "EN", table: "tweets"},
+      {expression: "lang", operator: "is not null", table: "tweets"},
+      {expression: "country", operator: "!=", operand: "US", table: "tweets"}],
+    operator: "and"
+}}), "SELECT `tweets.lang` FROM `tweets` WHERE ((`tweets.lang` = 'EN') AND (`tweets.lang` IS NOT NULL) AND (`tweets.country` != 'US'));")
+// OR
+test(sql({
+  selectors: [{expression: "lang", table: "tweets"}],
+  filter: {
+    operand: [
+      {expression: "lang", operand: "EN", operator: "=", table: "tweets"},
+      {expression: "lang", operand: "ES", operator: "=", table: "tweets"},
+      {expression: "lang", operand: "FR", operator: "=", table: "tweets"}],
+    operator: "or"
+}}), "SELECT `tweets.lang` FROM `tweets` WHERE ((`tweets.lang` = 'EN') OR (`tweets.lang` = 'ES') OR (`tweets.lang` = 'FR'));")
+// combination
 
 console.log("GROUP BY")
 test(sql({selectors: [

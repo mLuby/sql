@@ -3,6 +3,7 @@ module.exports = sql
 // Constants (use this for strings to avoid typos)
 const COMMA = ", "
 const AND = " AND "
+const OR = " OR "
 const SEMICOLON = ";"
 
 // sql :: State -> SqlString
@@ -11,7 +12,7 @@ function sql (state, isSubquery) {
     [
       selectClause(state.selectors),
       fromClause(state.selectors),
-      whereClause(state.filters),
+      whereClause(state.filter),
       groupByClause(state.selectors),
       orderByClause(state.order),
       limitClause(state.limit)
@@ -49,14 +50,9 @@ function fromClause (selectors) {
     .join(COMMA)}` : ""
 }
 
-// whereClause :: [Filter] -> String
-function whereClause (filters) {
-  return filters && filters.length ? `WHERE ${filters
-    .map(compose(
-      parenthesize,
-      chooseOperator
-    ))
-    .join(AND)}` : ""
+// whereClause :: Filter -> String
+function whereClause (filter) {
+  return filter ? `WHERE ${subFilter(filter)}` : ""
 }
 
 // groupByClause :: [Selector] -> String
@@ -84,11 +80,33 @@ function subqueryOrBacktickify (maybeSubQuery) { return typeof maybeSubQuery ===
 // subqueryOrQualifyTable :: State || String -> String
 function subqueryOrQualifyTable (tableAlias) { return maybeSubQuery => typeof maybeSubQuery === "object" ? parenthesize(sql(maybeSubQuery, true)) : backtickify(qualifyTable(tableAlias)(maybeSubQuery)) }
 
+// wildcardify :: String -> String
+function wildcardify (string) { return `%${string}%`}
+
+// subFilter :: Filter || String -> String
+function subFilter (maybeSubFilter) { return typeof maybeSubFilter === "object" ? compose(parenthesize, chooseOperator)(maybeSubFilter) : maybeSubFilter }
+
 // chooseOperator :: Filter -> String
 function chooseOperator (filter) {
   switch (filter.operator.toUpperCase()) {
-  case "BETWEEN": return between(filter)
-  case "IN": return inOperator(filter)
+  case "BETWEEN": return `${backtickedTableColumn(filter)} BETWEEN ${quote(filter.operand[0])} AND ${quote(filter.operand[1])}`
+  case "NOT BETWEEN": return `${backtickedTableColumn(filter)} NOT BETWEEN ${quote(filter.operand[0])} AND ${quote(filter.operand[1])}`
+  case "IN": return `${backtickedTableColumn(filter)} IN ${parenthesize(filter.operand.map(quote).join(COMMA))}`
+  case "NOT IN": return `${backtickedTableColumn(filter)} NOT IN ${parenthesize(filter.operand.map(quote).join(COMMA))}`
+  case "LIKE": return `${backtickedTableColumn(filter)} LIKE ${quote(wildcardify(filter.operand))}`
+  case "NOT LIKE": return `${backtickedTableColumn(filter)} NOT LIKE ${quote(wildcardify(filter.operand))}`
+  case "ILIKE": return `${backtickedTableColumn(filter)} ILIKE ${quote(wildcardify(filter.operand))}`
+  case "NOT ILIKE": return `${backtickedTableColumn(filter)} NOT ILIKE ${quote(wildcardify(filter.operand))}`
+  case "IS NULL": return `${backtickedTableColumn(filter)} IS NULL`
+  case "IS NOT NULL": return `${backtickedTableColumn(filter)} IS NOT NULL`
+  case "=": return `${backtickedTableColumn(filter)} = ${quote(filter.operand)}`
+  case "!=": return `${backtickedTableColumn(filter)} != ${quote(filter.operand)}`
+  case ">": return `${backtickedTableColumn(filter)} > ${quote(filter.operand)}`
+  case ">=": return `${backtickedTableColumn(filter)} >= ${quote(filter.operand)}`
+  case "<": return `${backtickedTableColumn(filter)} < ${quote(filter.operand)}`
+  case "<=": return `${backtickedTableColumn(filter)} <= ${quote(filter.operand)}`
+  case "AND": return filter.operand.map(subFilter).join(AND)
+  case "OR": return filter.operand.map(subFilter).join(OR)
   default: throw new Error(`Invalid filter operator: ${filter.operator}`)
   }
 }
@@ -96,17 +114,11 @@ function chooseOperator (filter) {
 // backtickify :: String -> String
 function backtickify (string) { return `\`${string}\`` }
 
-// inOperator :: Filter -> String -- `Operator` suffix because `in` is reserved.
-function inOperator (filter) { return `${backtickedTableColumn(filter)} IN ${parenthesize(filter.operand.map(quote).join(COMMA))}` }
-
 // quote :: String -> String
 function quote (value) { return typeof value === "string" ? `'${value}'` : `${value}` }
 
 // backtickedTableColumn :: Filter -> String
 function backtickedTableColumn (filter) { return compose(backtickify, qualifyTable(filter.table), prop("expression"))(filter) }
-
-// between :: Filter -> String
-function between (filter) { return `${backtickedTableColumn(filter)} BETWEEN ${quote(filter.operand[0])} AND ${quote(filter.operand[1])}` }
 
 // prop :: K -> {K: V} -> V
 function prop (key) { return obj => obj[key] }

@@ -1,7 +1,17 @@
 /* TODO
+filter uses expressions not just table.column (but no aggregates, that's HAVING)
+AVG() - Returns the average value
+COUNT() - Returns the number of rows
+FIRST() - Returns the first value
+LAST() - Returns the last value
+MAX() - Returns the largest value
+MIN() - Returns the smallest value
+SUM() - Returns the sum
+CAST
+LEN?
 - have a .sql prop on selectors and/or filters to allow custom? compose/set to pass it around?
 - always alias and use them as reference? how to avoid name collisions?
-- havingClause?
+- havingClause? http://www.w3schools.com/SQl/sql_having.asp
 */
 
 const selector = {
