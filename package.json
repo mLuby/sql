@@ -5,7 +5,7 @@
   "main": "sql.js",
   "scripts": {
     "watch": "node_modules/.bin/npm-watch",
-    "test": "node tests.js # | node_modules/.bin/tap-diff"
+    "test": "clear ; node tests.js # | node_modules/.bin/tap-diff"
   },
   "watch": {
     "test": {

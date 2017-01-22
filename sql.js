@@ -6,7 +6,7 @@ const AND = " AND "
 const SEMICOLON = ";"
 
 // sql :: State -> SqlString
-function sql (state) {
+function sql (state, isSubquery) {
   const sqlStatement = terminateSql(
     [
       selectClause(state.selectors),
@@ -17,7 +17,7 @@ function sql (state) {
       limitClause(state.limit)
     ].filter(outEmptyStrings)
     .join(" ")
-  )
+  , isSubquery)
   return sqlStatement
 }
 
@@ -27,11 +27,12 @@ function sql (state) {
 function selectClause (selectors) {
   return selectors && selectors.length ? `SELECT ${selectors
     .map(selector => compose(
-      alias(selector.name),
+      alias(selector.alias),
       aggregate(selector.aggType),
-      backtickify,
-      qualifyTable(selector.tableAlias || selector.table),
-      prop("value")
+      // backtickify,
+      // backtickify(qualifyTable(selector.tableAlias || selector.table)),
+      subqueryOrQualifyTable(selector.tableAlias || selector.table),
+      prop("expression")
     )(selector))
     .join(COMMA)}` : ""
 }
@@ -39,10 +40,11 @@ function selectClause (selectors) {
 // fromClause :: [Selector] -> String
 function fromClause (selectors) {
   return selectors && selectors.length ? `FROM ${selectors
-    .map(compose(
-      backtickify,
+    .map(selector => compose(
+      alias(selector.tableAlias),
+      subqueryOrBacktickify,
       prop("table")
-    ))
+    )(selector))
     .reduce(unique, [])
     .join(COMMA)}` : ""
 }
@@ -61,7 +63,7 @@ function whereClause (filters) {
 function groupByClause (selectors) {
   return selectors && selectors.filter(prop("aggType")).length ? `GROUP BY ${selectors
     .filter(prop("aggType"))
-    .map(prop("name"))
+    .map(prop("alias"))
     .join(COMMA)}` : ""
 }
 
@@ -73,6 +75,16 @@ function limitClause (limit) { return limit ? `LIMIT ${limit}` : "" }
 
 // Utilities
 
+// log :: a -> IO a
+function log (x) { console.log(x); return x }
+
+// subqueryOrBacktickify :: State || String -> String
+function subqueryOrBacktickify (maybeSubQuery) { return typeof maybeSubQuery === "object" ? parenthesize(sql(maybeSubQuery, true)) : backtickify(maybeSubQuery) }
+
+// subqueryOrQualifyTable :: State || String -> String
+function subqueryOrQualifyTable (tableAlias) { return maybeSubQuery => typeof maybeSubQuery === "object" ? parenthesize(sql(maybeSubQuery, true)) : backtickify(qualifyTable(tableAlias)(maybeSubQuery)) }
+
+// chooseOperator :: Filter -> String
 function chooseOperator (filter) {
   switch (filter.operator.toUpperCase()) {
   case "BETWEEN": return between(filter)
@@ -91,7 +103,7 @@ function inOperator (filter) { return `${backtickedTableColumn(filter)} IN ${par
 function quote (value) { return typeof value === "string" ? `'${value}'` : `${value}` }
 
 // backtickedTableColumn :: Filter -> String
-function backtickedTableColumn (filter) { return compose(backtickify, qualifyTable(filter.table), prop("column"))(filter) }
+function backtickedTableColumn (filter) { return compose(backtickify, qualifyTable(filter.table), prop("expression"))(filter) }
 
 // between :: Filter -> String
 function between (filter) { return `${backtickedTableColumn(filter)} BETWEEN ${quote(filter.operand[0])} AND ${quote(filter.operand[1])}` }
@@ -106,13 +118,13 @@ function unique (list, item) { return includes(list, item) ? list : list.concat(
 function includes (list, item) { return list.indexOf(item) >= 0 }
 
 // aggregate :: String -> String -> String
-function aggregate (aggName) { return column => aggName ? `${aggName.toUpperCase()}(${column})` : column }
+function aggregate (aggName) { return expression => aggName ? `${aggName.toUpperCase()}(${expression})` : expression }
 
 // alias :: String -> String -> String
-function alias (aliasName) { return column => aliasName ? `${column} AS ${aliasName}` : column }
+function alias (aliasName) { return expression => aliasName ? `${expression} AS ${aliasName}` : expression }
 
 // qualifyTable :: String -> String -> String
-function qualifyTable (tableName) { return column => tableName ? `${tableName}.${column}` : `${column}` }
+function qualifyTable (tableName) { return expression => tableName ? `${tableName}.${expression}` : `${expression}` }
 
 // compose :: [a -> a] -> (a -> a)
 function compose () { return value => Array.apply(null, arguments).reverse().reduce((result, f) => f(result), value) }
@@ -124,4 +136,4 @@ function parenthesize (string) { return `(${string})` }
 function outEmptyStrings (string) { return string !== "" }
 
 // terminateSql :: String -> String
-function terminateSql (string) { return `${string}${SEMICOLON}` }
+function terminateSql (string, isSubquery) { return `${string}${isSubquery ? "" : SEMICOLON}` }
