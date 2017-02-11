@@ -1,13 +1,21 @@
-port module Main exposing (..)
+port module Main exposing (input, output)
 
-import Json.Decode exposing (field, Value, Decoder, map2, string, decodeValue, list)
-import List exposing (head, foldl, append, intersperse, map)
+import Json.Decode as Json exposing (..)
+import List exposing (..)
 
 
 port input : (ChartJson -> msg) -> Sub msg
 
 
 port output : Sql -> Cmd a
+
+
+
+-- Types
+
+
+type Msg
+    = ChartRequestedOn ChartJson
 
 
 type alias Model =
@@ -26,10 +34,6 @@ type alias SelectorJson =
     Value
 
 
-type Msg
-    = ChartRequestedOn ChartJson
-
-
 type alias Chart =
     { selectors : List Selector }
 
@@ -38,15 +42,19 @@ type alias Selector =
     { expression : String, table : String }
 
 
+
+-- JSON Decoders
+
+
 chartDecoder : Decoder Chart
 chartDecoder =
-    Json.Decode.map Chart
+    Json.map Chart
         (field "selectors" (list selectorDecoder))
 
 
 selectorDecoder : Decoder Selector
 selectorDecoder =
-    map2 Selector
+    Json.map2 Selector
         (field "expression" string)
         (field "table" string)
 
@@ -63,9 +71,9 @@ jsonToSelector json =
 
 
 -- \x -> x lambda expression
--- ++ string concat operator
--- << composition operator
--- <| function application
+-- ++ string concat operator: "a" ++ "b" == "ab"
+-- << composition operator: (f << g) x == f(g(x))
+-- <| function application: f <| g x == f(g x)
 
 
 chartToSql : ChartJson -> String
@@ -84,12 +92,12 @@ chartToSql chartResult =
 
 selectClause : List Selector -> String
 selectClause selectors =
-    foldl (++) "" <| intersperse ", " <| map (\selector -> backtick (selector.table ++ "." ++ selector.expression)) selectors
+    join ", " <| List.map (\selector -> backtick (join "." [ selector.expression, selector.table ])) selectors
 
 
 fromClause : List Selector -> String
 fromClause selectors =
-    foldl (++) "" <| intersperse ", " <| map (backtick << .table) selectors
+    join ", " <| List.map (backtick << .table) selectors
 
 
 
