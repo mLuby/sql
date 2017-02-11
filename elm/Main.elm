@@ -17,35 +17,30 @@ type Msg
     = ChartRequestedOn Value
 
 
-
--- chartDecoder : Decoder ChartSettings
--- chartDecoder =
---     map2 ChartSettings (field "table" string) (field "column" string)
+type alias Chart =
+    { column : String, table : String }
 
 
-column : Value -> String
-column chart =
-    case decodeValue (field "column" string) chart of
-        Ok columnName ->
-            columnName
-
-        Err msg ->
-            ("ERROR: " ++ msg)
+chartDecoder : Decoder Chart
+chartDecoder =
+    map2 Chart
+        (field "column" string)
+        (field "table" string)
 
 
-table : Value -> String
-table chart =
-    case decodeValue (field "table" string) chart of
-        Ok tableName ->
-            tableName
-
-        Err msg ->
-            ("ERROR: " ++ msg)
+jsonToChart : Value -> Result String Chart
+jsonToChart json =
+    decodeValue chartDecoder json
 
 
 chartToSql : Value -> String
-chartToSql chart =
-    "SELECT " ++ column chart ++ " FROM " ++ table chart ++ ";"
+chartToSql chartResult =
+    case jsonToChart chartResult of
+        Err msg ->
+            "Error: " ++ msg
+
+        Ok chart ->
+            "SELECT " ++ chart.column ++ " FROM " ++ chart.table ++ ";"
 
 
 initialModel : Model
@@ -71,7 +66,7 @@ update msg { lastSql } =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions chartModel =
+subscriptions doesntmatter =
     input ChartRequestedOn
 
 
