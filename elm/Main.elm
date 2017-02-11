@@ -3,18 +3,26 @@ port module Main exposing (..)
 import Json.Decode exposing (..)
 
 
-port input : (Value -> msg) -> Sub msg
+port input : (ChartJson -> msg) -> Sub msg
 
 
-port output : String -> Cmd a
+port output : Sql -> Cmd a
 
 
 type alias Model =
-    { lastSql : String }
+    { lastSql : Sql }
+
+
+type alias Sql =
+    String
+
+
+type alias ChartJson =
+    Value
 
 
 type Msg
-    = ChartRequestedOn Value
+    = ChartRequestedOn ChartJson
 
 
 type alias Chart =
@@ -28,12 +36,12 @@ chartDecoder =
         (field "table" string)
 
 
-jsonToChart : Value -> Result String Chart
+jsonToChart : ChartJson -> Result String Chart
 jsonToChart json =
     decodeValue chartDecoder json
 
 
-chartToSql : Value -> String
+chartToSql : ChartJson -> String
 chartToSql chartResult =
     case jsonToChart chartResult of
         Err msg ->
