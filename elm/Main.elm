@@ -1,6 +1,7 @@
 port module Main exposing (..)
 
-import Json.Decode exposing (..)
+import Json.Decode exposing (field, Value, Decoder, map2, string, decodeValue, list)
+import List exposing (head, foldl, append, intersperse, map)
 
 
 port input : (ChartJson -> msg) -> Sub msg
@@ -21,24 +22,50 @@ type alias ChartJson =
     Value
 
 
+type alias SelectorJson =
+    Value
+
+
 type Msg
     = ChartRequestedOn ChartJson
 
 
 type alias Chart =
-    { column : String, table : String }
+    { selectors : List Selector }
+
+
+type alias Selector =
+    { expression : String, table : String }
 
 
 chartDecoder : Decoder Chart
 chartDecoder =
-    map2 Chart
-        (field "column" string)
+    Json.Decode.map Chart
+        (field "selectors" (list selectorDecoder))
+
+
+selectorDecoder : Decoder Selector
+selectorDecoder =
+    map2 Selector
+        (field "expression" string)
         (field "table" string)
 
 
 jsonToChart : ChartJson -> Result String Chart
 jsonToChart json =
     decodeValue chartDecoder json
+
+
+jsonToSelector : SelectorJson -> Result String Selector
+jsonToSelector json =
+    decodeValue selectorDecoder json
+
+
+
+-- \x -> x lambda expression
+-- ++ string concat operator
+-- << composition operator
+-- <| function application
 
 
 chartToSql : ChartJson -> String
@@ -48,7 +75,39 @@ chartToSql chartResult =
             "Error: " ++ msg
 
         Ok chart ->
-            "SELECT " ++ chart.column ++ " FROM " ++ chart.table ++ ";"
+            "SELECT " ++ selectClause chart.selectors ++ " FROM " ++ fromClause chart.selectors ++ ";"
+
+
+
+-- Clauses:
+
+
+selectClause : List Selector -> String
+selectClause selectors =
+    foldl (++) "" <| intersperse ", " <| map (\selector -> backtick (selector.table ++ "." ++ selector.expression)) selectors
+
+
+fromClause : List Selector -> String
+fromClause selectors =
+    foldl (++) "" <| intersperse ", " <| map (backtick << .table) selectors
+
+
+
+-- Helpers:
+
+
+join : String -> List String -> String
+join conjunction strings =
+    foldl (++) "" <| intersperse conjunction strings
+
+
+backtick : String -> String
+backtick a =
+    "`" ++ a ++ "`"
+
+
+
+-- Plumbing:
 
 
 initialModel : Model
@@ -64,11 +123,8 @@ update msg { lastSql } =
                 sql =
                     chartToSql chart
 
-                lastSql =
-                    sql
-
                 newModel =
-                    Model lastSql
+                    Model sql
             in
                 ( newModel, output sql )
 
