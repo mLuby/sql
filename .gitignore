@@ -1,2 +1,4 @@
 node_modules
 .DS_Store
+elm-stuff/
+built-elm-app.js
