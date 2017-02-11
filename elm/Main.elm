@@ -92,12 +92,12 @@ chartToSql chartResult =
 
 selectClause : List Selector -> String
 selectClause selectors =
-    join ", " <| List.map (\selector -> backtick (join "." [ selector.expression, selector.table ])) selectors
+    join ", " <| List.map (\selector -> backtick (join "." [ selector.expression, selector.table ])) <| reverse selectors
 
 
 fromClause : List Selector -> String
 fromClause selectors =
-    join ", " <| List.map (backtick << .table) selectors
+    join ", " <| List.map (backtick << .table) <| reverse selectors
 
 
 
